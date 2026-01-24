@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+    <title>JUBAYER - Ultra Hosting Panel</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;900&family=Orbitron:wght@400;700;900&display=swap');
+
+        :root {
+            --bg-gradient: linear-gradient(-45deg, #0f0c29, #302b63, #24243e, #00d2ff);
+            --accent: #00ffcc;
+            --box-bg: rgba(22, 27, 34, 0.7);
+            --text-glow: rgba(0, 255, 204, 0.4);
+        }
+
+        /* Themes */
+        [data-theme="cyber"] { --bg-gradient: linear-gradient(-45deg, #000, #1a0033, #000, #ff00ff); --accent: #ff00ff; --text-glow: rgba(255, 0, 255, 0.5); }
+        [data-theme="purple"] { --bg-gradient: linear-gradient(-45deg, #2d004d, #1a0033, #6a0572, #a4508b); --accent: #e0aaff; --text-glow: rgba(224, 170, 255, 0.5); }
+        [data-theme="sunset"] { --bg-gradient: linear-gradient(-45deg, #ff512f, #dd2476, #fb8c00, #ff512f); --accent: #ffd700; --text-glow: rgba(255, 215, 0, 0.5); }
+        [data-theme="matrix"] { --bg-gradient: linear-gradient(to bottom, #000, #050505); --accent: #00ff41; --text-glow: rgba(0, 255, 65, 0.5); }
+        [data-theme="3dcar"] { --bg-gradient: linear-gradient(-45deg, #1a1a2e, #16213e, #0f3460); --accent: #e94560; --text-glow: rgba(233, 69, 96, 0.5); }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Poppins', sans-serif; -webkit-tap-highlight-color: transparent; }
+
+        body {
+            background: var(--bg-gradient);
+            background-size: 400% 400%;
+            animation: gradientBG 15s ease infinite;
+            color: #e6edf3;
+            min-height: 100vh;
+            padding-bottom: 120px;
+            overflow-x: hidden;
+            transition: 0.5s ease;
+        }
+
+        @keyframes gradientBG {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        /* SweetAlert Custom Styling */
+        .swal2-popup {
+            background: rgba(15, 20, 30, 0.95) !important;
+            backdrop-filter: blur(20px) !important;
+            border: 1px solid var(--accent) !important;
+            border-radius: 25px !important;
+            color: #fff !important;
+        }
+        .swal2-title { color: var(--accent) !important; font-family: 'Orbitron', sans-serif !important; }
+        .swal2-confirm { background: #ff4d4d !important; color: #fff !important; font-weight: bold !important; border-radius: 10px !important; }
+        .swal2-cancel { background: #30363d !important; color: #fff !important; border-radius: 10px !important; }
+
+        /* Header & Navigation */
+        .user-bar { 
+            background: rgba(0, 0, 0, 0.6); 
+            padding: 10px 15px; 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            backdrop-filter: blur(15px); 
+            position: sticky; 
+            top: 0; 
+            z-index: 1000;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .theme-panel { display: flex; gap: 8px; }
+        .theme-dot { width: 22px; height: 22px; border-radius: 50%; cursor: pointer; border: 2px solid rgba(255,255,255,0.5); transition: 0.3s; }
+        .theme-dot:hover { transform: scale(1.2); border-color: #fff; }
+
+        .logout-btn { background: #ff4d4d; color: white; text-decoration: none; padding: 6px 14px; border-radius: 8px; font-size: 12px; font-weight: bold; box-shadow: 0 4px 10px rgba(255,77,77,0.3); }
+
+        h1.main-head { 
+            text-align: center; 
+            color: var(--accent); 
+            margin: 20px 0; 
+            font-family: 'Orbitron', sans-serif; 
+            font-size: 1.2rem;
+            letter-spacing: 2px; 
+            text-shadow: 0 0 10px var(--text-glow); 
+        }
+
+        .container { width: 94%; max-width: 600px; margin: 0 auto; }
+
+        .box { 
+            background: var(--box-bg); 
+            padding: 18px; 
+            border-radius: 20px; 
+            border: 1px solid rgba(255, 255, 255, 0.08); 
+            backdrop-filter: blur(12px); 
+            margin-bottom: 20px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+        }
+
+        .upload-card { border: 2px dashed var(--accent); text-align: center; background: rgba(0,0,0,0.2); }
+        
+        .upload-btn { 
+            background: var(--accent); 
+            color: #000; 
+            font-weight: 900; 
+            border:none; 
+            border-radius:10px; 
+            padding: 14px; 
+            width: 100%; 
+            margin-top: 10px;
+            cursor: pointer;
+            text-transform: uppercase;
+        }
+
+        .app-title { 
+            color: var(--accent); 
+            font-family:'Orbitron'; 
+            font-size: 15px; 
+            display: flex; 
+            justify-content: space-between;
+            align-items: center; 
+            margin-bottom: 15px;
+        }
+
+        .status-badge {
+            font-size: 10px;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-weight: 800;
+        }
+        .status-running { background: rgba(0, 255, 65, 0.15); color: #00ff41; border: 1px solid #00ff41; box-shadow: 0 0 8px rgba(0, 255, 65, 0.3); }
+        .status-offline { background: rgba(255, 71, 87, 0.15); color: #ff4757; border: 1px solid #ff4757; }
+
+        .button-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+        .btn-m { 
+            padding: 12px; 
+            border-radius: 10px; 
+            text-decoration: none; 
+            text-align: center; 
+            font-size: 13px; 
+            font-weight: bold; 
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 5px;
+            cursor: pointer;
+            border: none;
+        }
+        .run { background: #00d2ff; color: #000; }
+        .stop { background: #ff4757; color: #fff; }
+        .restart { background: #f39c12; color: #000; }
+        .delete { background: #30363d; color: #ff4d4d; border: 1px solid #ff4d4d; }
+
+        pre { 
+            background: #0d1117; 
+            color: #00ff41; 
+            padding: 12px; 
+            height: 140px; 
+            overflow-y: auto; 
+            border-radius: 12px; 
+            border: 1px solid #30363d; 
+            font-size: 11px; 
+            margin-top: 15px; 
+            white-space: pre-wrap; 
+            font-family: monospace;
+        }
+
+        .branding { text-align: center; padding: 20px 0; }
+        .jubayer-text {
+            font-size: 1.5rem; font-weight: 900;
+            font-family: 'Orbitron', sans-serif; letter-spacing: 5px;
+            background: linear-gradient(to bottom, #fff, var(--accent));
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+            filter: drop-shadow(0 0 10px var(--text-glow));
+        }
+
+        .social-bar {
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(20px);
+            padding: 15px;
+            position: fixed;
+            bottom: 0; width: 100%;
+            display: flex; justify-content: center; gap: 30px;
+            border-top: 1px solid rgba(255,255,255,0.1);
+        }
+        .social-icon { color: white; font-size: 22px; transition: 0.3s; }
+        .social-icon:hover { color: var(--accent); transform: scale(1.2); }
+
+        #matrix-canvas { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -1; pointer-events: none; opacity: 0.3; display: none; }
+        [data-theme="matrix"] #matrix-canvas { display: block; }
+    </style>
+</head>
+<body data-theme="default">
+
+<canvas id="matrix-canvas"></canvas>
+
+<div class="user-bar">
+    <div class="theme-panel">
+        <div class="theme-dot" style="background: #00d2ff;" onclick="setTheme('default')"></div>
+        <div class="theme-dot" style="background: #ff00ff;" onclick="setTheme('cyber')"></div>
+        <div class="theme-dot" style="background: #00ff41;" onclick="setTheme('matrix')"></div>
+        <div class="theme-dot" style="background: #e94560;" onclick="setTheme('3dcar')"></div>
+        <div class="theme-dot" style="background: #fb8c00;" onclick="setTheme('sunset')"></div>
+    </div>
+    <div style="display:flex; align-items:center; gap:8px;">
+        <span style="font-size:11px; color:var(--accent); font-weight:bold;">@{{ session['username'] }}</span>
+        <a href="/logout" class="logout-btn"><i class="fa-solid fa-power-off"></i></a>
+    </div>
+</div>
+
+<h1 class="main-head"><i class="fa-solid fa-server"></i> MR.GHOST HOSTING PANEL V1</h1>
+
+<div class="container">
+    <div class="box upload-card">
+        <form method="POST" action="/upload" enctype="multipart/form-data">
+            <input type="file" name="file" id="fileInput" accept=".zip" required style="display:none;">
+            <label for="fileInput" id="fileNameDisplay" style="cursor:pointer; display:block; padding: 10px; font-size: 13px;">
+                <i class="fa-solid fa-cloud-arrow-up" style="font-size: 30px; color: var(--accent); margin-bottom:10px; display:block;"></i>
+                UPLOAD PROJECT (.ZIP)
+            </label>
+            <button type="submit" class="upload-btn">DEPLOY SERVER</button>
+        </form>
+    </div>
+
+    {% for app in apps %}
+    <div class="box">
+        <div class="app-title">
+            <span><i class="fa-solid fa-cube"></i> {{ app.name }}</span>
+            <span id="status-{{ app.name }}" class="status-badge {% if app.running %}status-running{% else %}status-offline{% endif %}">
+                {% if app.running %}● RUNNING{% else %}● OFFLINE{% endif %}
+            </span>
+        </div>
+        
+        <div class="button-grid">
+            <a href="{{ url_for('run', name=app.name) }}" class="btn-m run"><i class="fa-solid fa-play"></i> START</a>
+            <a href="{{ url_for('stop', name=app.name) }}" class="btn-m stop"><i class="fa-solid fa-stop"></i> STOP</a>
+            <a href="{{ url_for('restart', name=app.name) }}" class="btn-m restart"><i class="fa-solid fa-rotate"></i> RESTART</a>
+            <button onclick="confirmDelete('{{ app.name }}', '{{ url_for('delete', name=app.name) }}')" class="btn-m delete">
+                <i class="fa-solid fa-trash"></i> DELETE
+            </button>
+        </div>
+
+        <pre id="log-{{ app.name }}">Waiting for logs...</pre>
+    </div>
+    {% endfor %}
+
+    <div class="branding">
+        <h1 class="jubayer-text">JUBAYER</h1>
+        <p style="font-size: 10px; color: #8b949e; letter-spacing: 2px;">সাদিয়া শুধু আমার</p>
+    </div>
+</div>
+
+<div class="social-bar">
+    <a href="https://t.me/mr_ghost34" target="_blank" class="social-icon"><i class="fa-brands fa-telegram"></i></a>
+    <a href="https://www.tiktok.com/@9x_jubayer_" target="_blank" class="social-icon"><i class="fa-brands fa-tiktok"></i></a>
+    <a href="https://youtube.com/@mr.ghost-34" target="_blank" class="social-icon"><i class="fa-brands fa-youtube"></i></a>
+    <a href="javascript:void(0)" onclick="shareSystem()" class="social-icon"><i class="fa-solid fa-share-nodes"></i></a>
+</div>
+
+<script>
+    // Theme Switcher
+    function setTheme(themeName) {
+        document.body.setAttribute('data-theme', themeName);
+        localStorage.setItem('selectedTheme', themeName);
+    }
+    const savedTheme = localStorage.getItem('selectedTheme') || 'default';
+    setTheme(savedTheme);
+
+    // File Input Display
+    document.getElementById('fileInput').addEventListener('change', function() {
+        if (this.files[0]) {
+            document.getElementById('fileNameDisplay').innerHTML = `<i class="fa-solid fa-file-zipper" style="font-size: 30px; color: #00ff41; margin-bottom:10px; display:block;"></i> ✅ ${this.files[0].name}`;
+        }
+    });
+
+    // Real-time Logs & Status
+    function updateSystem() {
+        const logBoxes = document.querySelectorAll('pre[id^="log-"]');
+        logBoxes.forEach(box => {
+            const appName = box.id.replace('log-', '');
+            fetch(`/get_log/${appName}`)
+                .then(res => res.json())
+                .then(data => {
+                    if (box.innerText !== data.log) {
+                        box.innerText = data.log;
+                        box.scrollTop = box.scrollHeight;
+                    }
+                    const badge = document.getElementById(`status-${appName}`);
+                    if (data.status === "RUNNING") {
+                        badge.innerText = "● RUNNING";
+                        badge.className = "status-badge status-running";
+                    } else {
+                        badge.innerText = "● OFFLINE";
+                        badge.className = "status-badge status-offline";
+                    }
+                }).catch(e => {});
+        });
+    }
+
+    if (document.querySelectorAll('pre[id^="log-"]').length > 0) {
+        setInterval(updateSystem, 3000);
+    }
+
+    // Matrix Rain Effect
+    const canvas = document.getElementById('matrix-canvas');
+    const ctx = canvas.getContext('2d');
+    function initMatrix() {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+        const fontSize = 14;
+        const columns = canvas.width / fontSize;
+        const drops = Array(Math.floor(columns)).fill(1);
+        function draw() {
+            ctx.fillStyle = "rgba(0, 0, 0, 0.05)";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = getComputedStyle(document.body).getPropertyValue('--accent');
+            ctx.font = fontSize + "px monospace";
+            for (let i = 0; i < drops.length; i++) {
+                const text = Math.floor(Math.random()*2);
+                ctx.fillText(text, i * fontSize, drops[i] * fontSize);
+                if (drops[i] * fontSize > canvas.height && Math.random() > 0.975) drops[i] = 0;
+                drops[i]++;
+            }
+        }
+        setInterval(draw, 50);
+    }
+    initMatrix();
+
+    // Custom Animated Delete Confirmation
+    function confirmDelete(appName, deleteUrl) {
+        Swal.fire({
+            title: 'ডিলিট করতে চান?',
+            text: `আপনি কি "${appName}" প্রজেক্টটি চিরতরে মুছে ফেলতে চান?`,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'হ্যাঁ, ডিলিট করুন!',
+            cancelButtonText: 'না, থাক',
+            background: 'rgba(15, 20, 30, 0.95)',
+            showClass: {
+                popup: 'animate__animated animate__headShake' // ঝাঁকুনি এনিমেশন
+            }
+        }).then((result) => {
+            if (result.isConfirmed) {
+                // Success loading animation
+                Swal.fire({
+                    title: 'মুছে ফেলা হচ্ছে...',
+                    html: 'ফাইল ডিলিট করা হচ্ছে, অনুগ্রহ করে অপেক্ষা করুন।',
+                    timer: 1500,
+                    timerProgressBar: true,
+                    didOpen: () => {
+                        Swal.showLoading();
+                        window.location.href = deleteUrl;
+                    }
+                });
+            }
+        });
+    }
+
+    function shareSystem() {
+        if (navigator.share) {
+            navigator.share({ title: 'MR.GHOST HOSTING PANEL V1', url: window.location.href });
+        } else {
+            alert("Link: " + window.location.href);
+        }
+    }
+</script>
+</body>
+</html>
