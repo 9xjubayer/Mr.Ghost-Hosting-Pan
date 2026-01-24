@@ -1,0 +1,168 @@
+@app.route("/admin", methods=["GET", "POST"])
+def admin_panel():
+    if not session.get('is_admin'): return redirect(url_for("login"))
+    
+    # ইউজার পাসওয়ার্ড আপডেট লজিক (নিশ্চিত করুন user_passwords ডিকশনারিটি আপনার মেইন কোডে আছে)
+    if request.method == "POST" and "target_user" in request.form:
+        target = request.form.get("target_user")
+        new_u_pass = request.form.get("new_user_pass")
+        # যদি আপনার ডাটাবেস ফাংশন থাকে তবে সেটি এখানে ব্যবহার করুন
+        # উদাহরণস্বরূপ: db = load_db(); db["users"][target] = new_u_pass; save_db(db)
+        if 'user_passwords' in globals() and target in user_passwords:
+            user_passwords[target] = new_u_pass
+
+    all_stats = []
+    if os.path.exists(UPLOAD_FOLDER):
+        for u_name in os.listdir(UPLOAD_FOLDER):
+            u_path = os.path.join(UPLOAD_FOLDER, u_name)
+            if os.path.isdir(u_path) and u_name != "admin":
+                project_count = len([d for d in os.listdir(u_path) if os.path.isdir(os.path.join(u_path, d))])
+                active_bots = sum(1 for (user, bot), p in processes.items() if user == u_name and p.poll() is None)
+                
+                # পাসওয়ার্ড লোড করার ট্রাই করা হচ্ছে
+                current_pass = "N/A"
+                if 'user_passwords' in globals():
+                    current_pass = user_passwords.get(u_name, "Saved in DB")
+                
+                all_stats.append({
+                    "name": u_name, 
+                    "files": project_count, 
+                    "active": active_bots, 
+                    "pass": current_pass
+                })
+
+    cards_html = ""
+    if not all_stats:
+        cards_html = '<div class="no-data">No active users found in system.</div>'
+    else:
+        for s in all_stats:
+            cards_html += f'''
+            <div class="user-card">
+                <div class="card-glow"></div>
+                <div class="user-header">
+                    <div class="user-info">
+                        <div class="avatar">{s['name'][0].upper()}</div>
+                        <span class="user-name">@{s['name']}</span>
+                    </div>
+                    <span class="bot-badge">
+                        <span class="dot"></span> {s['active']} Running
+                    </span>
+                </div>
+                <div class="stats-grid">
+                    <div class="stat-item">
+                        <small>Hosted Projects</small>
+                        <div class="val">{s['files']}</div>
+                    </div>
+                    <div class="stat-item">
+                        <small>Access Key</small>
+                        <div class="val" style="color:#ffd700;">{s['pass']}</div>
+                    </div>
+                </div>
+                <form method="post" class="update-area">
+                    <input type="hidden" name="target_user" value="{s['name']}">
+                    <input type="text" name="new_user_pass" placeholder="Change Password" required>
+                    <button type="submit"><i class="fa-solid fa-pen-to-square"></i></button>
+                </form>
+            </div>
+            '''
+
+    return f'''
+    <!DOCTYPE html>
+    <html lang="bn">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+        <title>Admin Elite Panel</title>
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+        <style>
+            @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600&display=swap');
+            
+            :root {{
+                --bg: #080a0f;
+                --glass: rgba(255, 255, 255, 0.03);
+                --border: rgba(255, 255, 255, 0.08);
+                --accent: #00d2ff;
+                --success: #39ff14;
+            }}
+
+            body {{ 
+                background: var(--bg); 
+                color: #e6edf3; 
+                font-family: 'Outfit', sans-serif; 
+                margin: 0; padding: 20px;
+                background-image: radial-gradient(circle at 50% -20%, #1a2333 0%, #080a0f 80%);
+            }}
+
+            .admin-nav {{ 
+                display: flex; justify-content: space-between; align-items: center; 
+                margin-bottom: 30px; padding: 10px 5px;
+            }}
+
+            .admin-nav h2 {{ font-size: 20px; letter-spacing: 1px; margin: 0; color: var(--accent); }}
+
+            .user-card {{ 
+                background: var(--glass); 
+                border: 1px solid var(--border); 
+                border-radius: 20px; padding: 20px; 
+                margin-bottom: 20px; position: relative; overflow: hidden;
+                backdrop-filter: blur(10px);
+            }}
+
+            .user-header {{ display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }}
+            
+            .user-info {{ display: flex; align-items: center; gap: 12px; }}
+            .avatar {{ 
+                width: 35px; height: 35px; background: var(--accent); 
+                border-radius: 10px; display: flex; align-items: center; 
+                justify-content: center; color: #000; font-weight: bold; 
+            }}
+
+            .user-name {{ font-weight: 600; font-size: 16px; color: #fff; }}
+
+            .bot-badge {{ 
+                background: rgba(57, 255, 20, 0.1); color: var(--success); 
+                font-size: 11px; padding: 5px 12px; border-radius: 20px; 
+                border: 1px solid rgba(57, 255, 20, 0.2); display: flex; align-items: center; gap: 5px;
+            }}
+            .dot {{ width: 6px; height: 6px; background: var(--success); border-radius: 50%; box-shadow: 0 0 8px var(--success); }}
+
+            .stats-grid {{ display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px; }}
+            .stat-item {{ background: rgba(0,0,0,0.2); padding: 12px; border-radius: 12px; }}
+            .stat-item small {{ color: #8b949e; font-size: 10px; text-transform: uppercase; display: block; margin-bottom: 4px; }}
+            .stat-item .val {{ font-size: 16px; font-weight: 600; }}
+
+            .update-area {{ display: flex; gap: 10px; border-top: 1px solid var(--border); padding-top: 15px; }}
+            .update-area input {{ 
+                flex: 1; background: rgba(0,0,0,0.3); border: 1px solid var(--border); 
+                color: white; padding: 10px 15px; border-radius: 12px; outline: none; font-size: 13px;
+            }}
+            .update-area button {{ 
+                background: var(--accent); color: #000; border: none; 
+                width: 45px; border-radius: 12px; cursor: pointer; transition: 0.3s;
+            }}
+            .update-area button:hover {{ transform: scale(1.05); box-shadow: 0 0 15px var(--accent); }}
+
+            .no-data {{ text-align: center; color: #8b949e; margin-top: 50px; font-size: 14px; }}
+            
+            .back-link {{ 
+                display: block; text-align: center; margin-top: 30px; 
+                color: #8b949e; text-decoration: none; font-size: 13px;
+            }}
+            
+            .logout-icon {{ color: #ff4d4d; font-size: 18px; }}
+        </style>
+    </head>
+    <body>
+        <div class="admin-nav">
+            <h2><i class="fa-solid fa-shield-halved"></i> Admin Panel</h2>
+            <a href="/logout" class="logout-icon"><i class="fa-solid fa-right-from-bracket"></i></a>
+        </div>
+
+        <div class="container">
+            {cards_html}
+        </div>
+
+        <a href="/" class="back-link">← Return to Dashboard</a>
+    </body>
+    </html>
+    '''
