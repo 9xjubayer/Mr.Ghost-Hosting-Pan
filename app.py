@@ -29,7 +29,7 @@ def load_db():
 def save_db(data):
     with open(DB_FILE, "w") as f: json.dump(data, f, indent=4)
 
-ADMIN_PASS = "jubayer999"
+ADMIN_PASS = "2332"
 
 # --- Login HTML (নিখুঁত করার জন্য) ---
 LOGIN_HTML = '''
