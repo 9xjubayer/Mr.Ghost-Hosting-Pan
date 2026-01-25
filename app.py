@@ -10,7 +10,7 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 processes = {}
 
-# --- ডাটাবেস ফাংশন (KeyError ঠিক করার জন্য) ---
+# --- ডাটাবেস ফাংশন ---
 def load_db():
     if not os.path.exists(DB_FILE):
         default = {"user_pw": "ghost34", "users": {}}
@@ -19,7 +19,6 @@ def load_db():
     with open(DB_FILE, "r") as f:
         try:
             data = json.load(f)
-            # যদি 'users' কি না থাকে তবে যোগ করে দেবে
             if "users" not in data: data["users"] = {}
             if "user_pw" not in data: data["user_pw"] = "12345"
             return data
@@ -31,7 +30,7 @@ def save_db(data):
 
 ADMIN_PASS = "2332"
 
-# --- Login HTML (নিখুঁত করার জন্য) ---
+# --- Login HTML (Get Password সেকশন যুক্ত করা হয়েছে) ---
 LOGIN_HTML = '''
 <!DOCTYPE html>
 <html>
@@ -45,8 +44,12 @@ LOGIN_HTML = '''
         #particles-js { position: fixed; width: 100%; height: 100%; z-index: 1; }
         .login-card { position: relative; z-index: 10; background: rgba(15,20,30,0.9); padding: 30px; border-radius: 20px; width: 320px; text-align: center; border: 1px solid rgba(0,255,255,0.1); backdrop-filter: blur(10px); }
         input, select { width: 100%; padding: 12px; margin: 8px 0; border-radius: 10px; border: 1px solid #333; background: rgba(0,0,0,0.5); color: white; box-sizing: border-box; outline: none; }
-        button { width: 100%; padding: 14px; border-radius: 10px; border: none; background: linear-gradient(135deg, var(--primary), var(--sec)); color: #000; font-weight: bold; cursor: pointer; margin-top: 10px; }
+        button { width: 100%; padding: 14px; border-radius: 10px; border: none; background: linear-gradient(135deg, var(--primary), var(--sec)); color: #000; font-weight: bold; cursor: pointer; margin-top: 10px; transition: 0.3s; }
+        button:hover { opacity: 0.8; transform: scale(1.02); }
         .flash { background: rgba(255,0,0,0.2); color: #ff4d4d; padding: 10px; border-radius: 8px; margin-bottom: 10px; font-size: 13px; border: 1px solid #ff4d4d; }
+        .get-pass { margin-top: 20px; font-size: 13px; color: #aaa; border-top: 1px solid #222; padding-top: 15px; }
+        .get-pass a { color: var(--primary); text-decoration: none; font-weight: bold; }
+        .get-pass i { margin-right: 5px; }
     </style>
 </head>
 <body>
@@ -61,6 +64,13 @@ LOGIN_HTML = '''
             <input type="password" name="password" placeholder="Password" required>
             <button type="submit">LOGIN NOW</button>
         </form>
+        
+        <div class="get-pass">
+            <span>Don't have a password?</span><br>
+            <a href="https://t.me/mrghostfileshare34/3" target="_blank">
+                <i class="fa-brands fa-telegram"></i> GET PASSWORD
+            </a>
+        </div>
     </div>
     <script src="https://cdn.jsdelivr.net/particles.js/2.0.0/particles.min.js"></script>
     <script>particlesJS('particles-js', {"particles":{"number":{"value":80},"color":{"value":"#00ffff"},"line_linked":{"enable":true,"color":"#ff00ff"},"move":{"enable":true,"speed":2}}});</script>
@@ -119,7 +129,6 @@ def admin_panel():
                 u_pass = db["users"].get(u_name, db["user_pw"])
                 user_stats.append({"name": u_name, "projects": total_projects, "active": active_bots, "pass": u_pass})
 
-    # Admin Panel HTML
     return render_template_string('''
     <!DOCTYPE html>
     <html lang="en">
@@ -182,7 +191,6 @@ def index():
             apps_list.append({"name": name, "running": (p and p.poll() is None)})
     return render_template("index.html", apps=apps_list, username=user_name)
 
-# --- বাকি আপলোড, রান, স্টপ লজিক আপনার আগের মতোই কাজ করবে ---
 @app.route("/upload", methods=["POST"])
 def upload():
     if 'username' not in session: return redirect(url_for("login"))
