@@ -1,8 +1,8 @@
-from flask import Flask, render_template, request, redirect, url_for, session, jsonify
-import os, zipfile, subprocess, shutil, json, time
+from flask import Flask, render_template, render_template_string, request, redirect, url_for, session, jsonify, flash
+import os, zipfile, subprocess, shutil, json
 
 app = Flask(__name__)
-app.secret_key = "jubayer_ultra_hosting_final_v3"
+app.secret_key = "jubayer_hosting_v5_final"
 
 UPLOAD_FOLDER = "uploads"
 DB_FILE = "database.json"
@@ -10,20 +10,63 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 processes = {}
 
-# --- ডাটাবেস ফাংশন ---
+# --- ডাটাবেস ফাংশন (KeyError ঠিক করার জন্য) ---
 def load_db():
     if not os.path.exists(DB_FILE):
-        default = {"user_pw": "12345"}
+        default = {"user_pw": "12345", "users": {}}
         with open(DB_FILE, "w") as f: json.dump(default, f)
         return default
-    with open(DB_FILE, "r") as f: return json.load(f)
+    with open(DB_FILE, "r") as f:
+        try:
+            data = json.load(f)
+            # যদি 'users' কি না থাকে তবে যোগ করে দেবে
+            if "users" not in data: data["users"] = {}
+            if "user_pw" not in data: data["user_pw"] = "12345"
+            return data
+        except:
+            return {"user_pw": "12345", "users": {}}
 
 def save_db(data):
     with open(DB_FILE, "w") as f: json.dump(data, f, indent=4)
 
 ADMIN_PASS = "jubayer999"
 
-# --- Routes ---
+# --- Login HTML (নিখুঁত করার জন্য) ---
+LOGIN_HTML = '''
+<!DOCTYPE html>
+<html>
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login | Ultra Hosting</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root { --bg: #050505; --primary: #00ffff; --sec: #ff00ff; }
+        body { background: #050505; color: white; font-family: sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; overflow: hidden; }
+        #particles-js { position: fixed; width: 100%; height: 100%; z-index: 1; }
+        .login-card { position: relative; z-index: 10; background: rgba(15,20,30,0.9); padding: 30px; border-radius: 20px; width: 320px; text-align: center; border: 1px solid rgba(0,255,255,0.1); backdrop-filter: blur(10px); }
+        input, select { width: 100%; padding: 12px; margin: 8px 0; border-radius: 10px; border: 1px solid #333; background: rgba(0,0,0,0.5); color: white; box-sizing: border-box; outline: none; }
+        button { width: 100%; padding: 14px; border-radius: 10px; border: none; background: linear-gradient(135deg, var(--primary), var(--sec)); color: #000; font-weight: bold; cursor: pointer; margin-top: 10px; }
+        .flash { background: rgba(255,0,0,0.2); color: #ff4d4d; padding: 10px; border-radius: 8px; margin-bottom: 10px; font-size: 13px; border: 1px solid #ff4d4d; }
+    </style>
+</head>
+<body>
+    <div id="particles-js"></div>
+    <div class="login-card">
+        <i class="fa-solid fa-bolt" style="font-size: 40px; color: var(--primary);"></i>
+        <h2>SYSTEM LOGIN</h2>
+        {% with messages = get_flashed_messages() %}{% if messages %}{% for msg in messages %}<div class="flash">{{ msg }}</div>{% endfor %}{% endif %}{% endwith %}
+        <form method="post" action="/login">
+            <select name="login_type"><option value="user">USER ACCESS</option><option value="admin">ADMIN ROOT</option></select>
+            <input type="text" name="username" placeholder="Username" required>
+            <input type="password" name="password" placeholder="Password" required>
+            <button type="submit">LOGIN NOW</button>
+        </form>
+    </div>
+    <script src="https://cdn.jsdelivr.net/particles.js/2.0.0/particles.min.js"></script>
+    <script>particlesJS('particles-js', {"particles":{"number":{"value":80},"color":{"value":"#00ffff"},"line_linked":{"enable":true,"color":"#ff00ff"},"move":{"enable":true,"speed":2}}});</script>
+</body>
+</html>
+'''
 
 @app.route("/login", methods=["GET", "POST"])
 def login():
@@ -32,256 +75,103 @@ def login():
         username = request.form.get("username", "").strip()
         pw = request.form.get("password", "").strip()
         db = load_db()
+        session.clear()
 
         if l_type == "admin":
             if username == "admin" and pw == ADMIN_PASS:
                 session['is_admin'], session['username'] = True, "admin"
                 return redirect(url_for("admin_panel"))
+            else: flash("Invalid Admin Password!")
         else:
-            if username and pw == db["user_pw"]:
+            correct_pw = db["users"].get(username, db["user_pw"])
+            if username and pw == correct_pw:
                 session['is_admin'], session['username'] = False, username
                 return redirect(url_for("index"))
+            else: flash("Invalid Username or Password!")
     
-    return render_template("login.html") if os.path.exists("templates/login.html") else redirect("/static_login")
+    return render_template_string(LOGIN_HTML)
 
-@app.route("/static_login")
-def static_login():
-    return '''
-    <!DOCTYPE html>
-    <html lang="en">
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-        <title>Terminal Access | Ultra Hosting</title>
-        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-        <style>
-            :root {
-                --bg: #020408;
-                --card: rgba(15, 20, 30, 0.9);
-                --border: #30363d;
-                --primary: #00d2ff;
-                --secondary: #3a86ff;
-                --text: #ffffff;
-            }
-            * { box-sizing: border-box; }
-            body {
-                background: var(--bg);
-                color: var(--text);
-                font-family: 'Inter', 'Segoe UI', sans-serif;
-                margin: 0;
-                display: flex;
-                justify-content: center;
-                align-items: center;
-                min-height: 100vh;
-                overflow: hidden;
-            }
-
-            /* --- Mega Background Animation --- */
-            .bg-layer {
-                position: fixed;
-                top: 0; left: 0; width: 100%; height: 100%;
-                z-index: -1;
-                background: radial-gradient(circle at 50% 50%, #0a1128 0%, #020408 100%);
-            }
-            .orbit {
-                position: absolute;
-                border: 1px solid rgba(0, 210, 255, 0.05);
-                border-radius: 50%;
-                animation: spin linear infinite;
-            }
-            @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-
-            /* --- The MEGA Login Card --- */
-            .login-card {
-                background: var(--card);
-                backdrop-filter: blur(30px);
-                padding: 80px 60px; /* অনেক বড় প্যাডিং */
-                border-radius: 40px;
-                width: 95%;
-                max-width: 650px; /* বক্সের সাইজ আরও বাড়ানো হয়েছে */
-                border: 1.5px solid rgba(255,255,255,0.08);
-                box-shadow: 0 40px 100px rgba(0,0,0,0.8), inset 0 0 20px rgba(0, 210, 255, 0.05);
-                text-align: center;
-                animation: zoomIn 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
-            }
-            @keyframes zoomIn { from { opacity: 0; transform: scale(0.8); } to { opacity: 1; transform: scale(1); } }
-            
-            .logo-header { margin-bottom: 50px; }
-            .logo-icon {
-                font-size: 80px; /* বড় আইকন */
-                background: linear-gradient(135deg, var(--primary), var(--secondary));
-                -webkit-background-clip: text;
-                -webkit-text-fill-color: transparent;
-                filter: drop-shadow(0 0 10px rgba(0, 210, 255, 0.5));
-            }
-            h2 { font-size: 3rem; margin: 15px 0; font-weight: 900; letter-spacing: -1px; }
-            p { color: #8b949e; font-size: 18px; margin-bottom: 50px; }
-            
-            .input-group { text-align: left; margin-bottom: 30px; }
-            label { display: block; font-size: 14px; margin-bottom: 12px; color: var(--primary); font-weight: 700; text-transform: uppercase; letter-spacing: 2px; }
-            
-            select, input {
-                width: 100%;
-                padding: 22px 25px; /* ইনপুট বড় করা হয়েছে */
-                border-radius: 20px;
-                border: 2px solid var(--border);
-                background: rgba(0, 0, 0, 0.4);
-                color: white;
-                font-size: 20px;
-                transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-                outline: none;
-            }
-            select:focus, input:focus {
-                border-color: var(--primary);
-                background: rgba(0, 0, 0, 0.6);
-                box-shadow: 0 0 25px rgba(0, 210, 255, 0.3);
-                transform: translateY(-2px);
-            }
-            
-            button {
-                width: 100%;
-                padding: 24px;
-                margin-top: 20px;
-                border-radius: 20px;
-                background: linear-gradient(135deg, var(--primary), var(--secondary));
-                color: #000;
-                font-weight: 900;
-                border: none;
-                cursor: pointer;
-                font-size: 22px;
-                text-transform: uppercase;
-                letter-spacing: 2px;
-                transition: 0.4s;
-                box-shadow: 0 15px 35px rgba(0, 210, 255, 0.4);
-            }
-            button:hover { 
-                transform: translateY(-5px);
-                box-shadow: 0 20px 45px rgba(0, 210, 255, 0.6);
-                filter: brightness(1.1);
-            }
-            
-            .footer-text { margin-top: 50px; font-size: 14px; color: #444; font-weight: 600; }
-            .status-dot { height: 10px; width: 10px; background: #39ff14; border-radius: 50%; display: inline-block; margin-right: 5px; box-shadow: 0 0 10px #39ff14; }
-        </style>
-    </head>
-    <body>
-        <div class="bg-layer">
-            <div class="orbit" style="width: 800px; height: 800px; top: -10%; right: -10%; animation-duration: 60s;"></div>
-            <div class="orbit" style="width: 600px; height: 600px; bottom: -5%; left: -5%; animation-duration: 40s; animation-direction: reverse;"></div>
-        </div>
-
-        <div class="login-card">
-            <div class="logo-header">
-                <div class="logo-icon"><i class="fa-solid fa-shield-halved"></i></div>
-                <h2>HOSTING PANEL V1</h2>
-                <p>সাদিয়া কেন আমার হলো না 😭</p>
-            </div>
-            
-            <form method="post" action="/login">
-                <div class="input-group">
-                    <label><i class="fa-solid fa-layer-group"></i> ACCESS LEVEL</label>
-                    <select name="login_type">
-                        <option value="user">STANDARD USER</option>
-                        <option value="admin">ROOT ADMINISTRATOR</option>
-                    </select>
-                </div>
-                
-                <div class="input-group">
-                    <label><i class="fa-solid fa-user"></i> IDENTIFICATION</label>
-                    <input type="text" name="username" placeholder="Yor Name" required>
-                </div>
-                
-                <div class="input-group">
-                    <label><i class="fa-solid fa-key"></i> ENCRYPTION KEY</label>
-                    <input type="password" name="password" placeholder="••••••••••••" required>
-                </div>
-                
-                <button type="submit">AUTHORIZE ACCESS</button>
-            </form>
-            
-            <div class="footer-text">
-                <span class="status-dot"></span> SECURE SERVER ENCRYPTED &bull; 2026
-            </div>
-        </div>
-    </body>
-    </html>
-    '''
-
-# --- Admin ও অন্যান্য রুট আগের মতোই আছে ---
 @app.route("/admin", methods=["GET", "POST"])
 def admin_panel():
     if not session.get('is_admin'): return redirect(url_for("login"))
     db = load_db()
     msg = ""
+    
     if request.method == "POST":
-        new_pw = request.form.get("new_pw")
-        if new_pw:
-            db["user_pw"] = new_pw
+        if "new_pw" in request.form:
+            db["user_pw"] = request.form.get("new_pw")
             save_db(db)
-            msg = "User Password Updated Successfully!"
+            msg = "Global Pass Updated!"
+        elif "target_user" in request.form:
+            target = request.form.get("target_user")
+            new_u_pass = request.form.get("new_user_pass")
+            db["users"][target] = new_u_pass
+            save_db(db)
+            msg = f"Key for @{target} updated!"
+
     user_stats = []
     if os.path.exists(UPLOAD_FOLDER):
         for u_name in os.listdir(UPLOAD_FOLDER):
             u_path = os.path.join(UPLOAD_FOLDER, u_name)
-            if os.path.isdir(u_path):
+            if os.path.isdir(u_path) and u_name != "admin":
                 total_projects = len([d for d in os.listdir(u_path) if os.path.isdir(os.path.join(u_path, d))])
                 active_bots = sum(1 for (user, bot), p in processes.items() if user == u_name and p.poll() is None)
-                user_stats.append({"name": u_name, "projects": total_projects, "active": active_bots})
-    return f'''
+                u_pass = db["users"].get(u_name, db["user_pw"])
+                user_stats.append({"name": u_name, "projects": total_projects, "active": active_bots, "pass": u_pass})
+
+    # Admin Panel HTML
+    return render_template_string('''
     <!DOCTYPE html>
     <html lang="en">
     <head>
         <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-        <title>Admin Panel</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Admin Control</title>
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
         <style>
-            :root {{ --bg: #0d1117; --card: #161b22; --border: #30363d; --primary: #00d2ff; --accent: #39ff14; }}
-            body {{ background: var(--bg); color: #c9d1d9; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; margin: 0; padding: 10px; }}
-            .container {{ max-width: 500px; margin: 0 auto; padding-bottom: 50px; }}
-            .card {{ background: var(--card); padding: 20px; border-radius: 16px; border: 1px solid var(--border); margin-bottom: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }}
-            .header {{ display: flex; justify-content: space-between; align-items: center; padding: 10px 5px; }}
-            h2, h3 {{ margin: 0; color: var(--primary); font-size: 1.2rem; }}
-            .user-card {{ background: #0d1117; padding: 15px; border-radius: 12px; border: 1px solid var(--border); margin-top: 10px; }}
-            .badge {{ background: var(--accent); color: black; font-size: 11px; padding: 3px 8px; border-radius: 20px; font-weight: bold; }}
-            input {{ width: 100%; padding: 12px; margin: 12px 0; border-radius: 8px; background: var(--bg); color: white; border: 1px solid var(--border); box-sizing: border-box; outline: none; }}
-            .btn {{ background: var(--primary); color: black; border: none; padding: 12px; width: 100%; border-radius: 8px; font-weight: 800; cursor: pointer; text-transform: uppercase; }}
-            .nav-link {{ color: #8b949e; text-decoration: none; font-size: 14px; border: 1px solid var(--border); padding: 5px 12px; border-radius: 6px; }}
+            :root { --bg: #030508; --accent: #00d2ff; --border: rgba(255,255,255,0.1); }
+            body { background: var(--bg); color: #fff; font-family: sans-serif; margin: 0; padding: 15px; }
+            .container { max-width: 500px; margin: auto; position: relative; z-index: 5; }
+            .card { background: rgba(255,255,255,0.05); border: 1px solid var(--border); border-radius: 15px; padding: 20px; margin-bottom: 15px; backdrop-filter: blur(10px); }
+            input { background: #000; border: 1px solid #333; color: #fff; padding: 10px; border-radius: 8px; width: 70%; }
+            button { background: var(--accent); border: none; padding: 10px 15px; border-radius: 8px; cursor: pointer; font-weight: bold; }
+            .user-box { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #222; padding: 10px 0; }
+            .online { color: #39ff14; font-size: 12px; }
         </style>
     </head>
     <body>
         <div class="container">
-            <div class="header">
-                <h2><i class="fa-solid fa-user-shield"></i> Admin Panel</h2>
-                <a href="/" class="nav-link">Dashboard</a>
-            </div>
+            <h3><i class="fa-solid fa-user-shield"></i> ROOT ADMIN</h3>
+            {% if msg %}<p style="color:cyan; text-align:center;">{{msg}}</p>{% endif %}
+            
             <div class="card">
-                <h3 style="color: #ffd700;"><i class="fa-solid fa-gears"></i> System Control</h3>
-                <p style="font-size: 13px; color: #8b949e;">User Password: <b style="color: white;">{db['user_pw']}</b></p>
-                {f'<p style="color: var(--accent); font-size: 12px;">{msg}</p>' if msg else ''}
+                <p>Global Key: <b>{{db['user_pw']}}</b></p>
+                <form method="post"><input type="text" name="new_pw" placeholder="New Global Pass"><button type="submit">SET</button></form>
+            </div>
+
+            {% for u in user_stats %}
+            <div class="card">
+                <div class="user-box">
+                    <span><b>@{{u.name}}</b> ({{u.projects}} Apps)</span>
+                    <span class="online">● {{u.active}} Active</span>
+                </div>
+                <p style="font-size:12px; color:#aaa;">Key: {{u.pass}}</p>
                 <form method="post">
-                    <input type="text" name="new_pw" placeholder="Set New Global Password" required>
-                    <button type="submit" class="btn">Update Password</button>
+                    <input type="hidden" name="target_user" value="{{u.name}}">
+                    <input type="text" name="new_user_pass" placeholder="Change Key">
+                    <button type="submit"><i class="fa-solid fa-sync"></i></button>
                 </form>
             </div>
-            <h3><i class="fa-solid fa-users"></i> Users ({len(user_stats)})</h3>
-            {"".join([f"""
-            <div class="user-card">
-                <div style="display: flex; justify-content: space-between; align-items: center;">
-                    <span style="color: #58a6ff; font-weight: bold;">@{u['name']}</span>
-                    <span class="badge">{u['active']} Active</span>
-                </div>
-                <p style="font-size: 13px; color: #8b949e; margin: 8px 0 0 0;">📂 Projects Hosted: <b>{u['projects']}</b></p>
-            </div>
-            """ for u in user_stats]) if user_stats else "<p style='text-align:center; color:#555;'>No users yet.</p>"}
+            {% endfor %}
+            <a href="/" style="color:#aaa; text-decoration:none; display:block; text-align:center; margin-top:20px;">Back to Home</a>
         </div>
     </body>
     </html>
-    '''
+    ''', db=db, user_stats=user_stats, msg=msg)
 
 @app.route("/")
 def index():
-    if 'username' not in session: return redirect(url_for("login"))
+    if 'username' not in session or session.get('is_admin'): return redirect(url_for("login"))
     user_name = session['username']
     user_dir = os.path.join(UPLOAD_FOLDER, user_name)
     os.makedirs(user_dir, exist_ok=True)
@@ -292,6 +182,7 @@ def index():
             apps_list.append({"name": name, "running": (p and p.poll() is None)})
     return render_template("index.html", apps=apps_list, username=user_name)
 
+# --- বাকি আপলোড, রান, স্টপ লজিক আপনার আগের মতোই কাজ করবে ---
 @app.route("/upload", methods=["POST"])
 def upload():
     if 'username' not in session: return redirect(url_for("login"))
@@ -306,8 +197,7 @@ def upload():
         file.save(zip_path)
         extract_dir = os.path.join(app_dir, "extracted")
         if os.path.exists(extract_dir): shutil.rmtree(extract_dir)
-        with zipfile.ZipFile(zip_path, 'r') as zip_ref:
-            zip_ref.extractall(extract_dir)
+        with zipfile.ZipFile(zip_path, 'r') as zip_ref: zip_ref.extractall(extract_dir)
     return redirect(url_for("index"))
 
 @app.route("/run/<name>")
@@ -332,12 +222,6 @@ def stop(name):
     if p: p.terminate(); del processes[(user_name, name)]
     return redirect(url_for("index"))
 
-@app.route("/restart/<name>")
-def restart(name):
-    stop(name)
-    time.sleep(1)
-    return run(name)
-
 @app.route("/delete/<name>")
 def delete(name):
     user_name = session.get('username')
@@ -345,18 +229,6 @@ def delete(name):
     stop(name)
     if os.path.exists(app_dir): shutil.rmtree(app_dir)
     return redirect(url_for("index"))
-
-@app.route("/get_log/<name>")
-def get_log(name):
-    user_name = session.get('username')
-    app_dir = os.path.join(UPLOAD_FOLDER, user_name, name)
-    log_path = os.path.join(app_dir, "logs.txt")
-    log_content = "No logs yet..."
-    if os.path.exists(log_path):
-        with open(log_path, "r") as f: log_content = f.read()[-1000:]
-    p = processes.get((user_name, name))
-    status = "RUNNING" if (p and p.poll() is None) else "OFFLINE"
-    return jsonify({"log": log_content, "status": status})
 
 @app.route("/logout")
 def logout():
