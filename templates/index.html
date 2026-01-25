@@ -42,19 +42,6 @@
             100% { background-position: 0% 50%; }
         }
 
-        /* SweetAlert Custom Styling */
-        .swal2-popup {
-            background: rgba(15, 20, 30, 0.95) !important;
-            backdrop-filter: blur(20px) !important;
-            border: 1px solid var(--accent) !important;
-            border-radius: 25px !important;
-            color: #fff !important;
-        }
-        .swal2-title { color: var(--accent) !important; font-family: 'Orbitron', sans-serif !important; }
-        .swal2-confirm { background: #ff4d4d !important; color: #fff !important; font-weight: bold !important; border-radius: 10px !important; }
-        .swal2-cancel { background: #30363d !important; color: #fff !important; border-radius: 10px !important; }
-
-        /* Header & Navigation */
         .user-bar { 
             background: rgba(0, 0, 0, 0.6); 
             padding: 10px 15px; 
@@ -84,7 +71,7 @@
             text-shadow: 0 0 10px var(--text-glow); 
         }
 
-        .container { width: 94%; max-width: 600px; margin: 0 auto; }
+        .container { width: 94%; max-width: 600px; margin: 0 auto; position: relative; z-index: 10; }
 
         .box { 
             background: var(--box-bg); 
@@ -181,16 +168,26 @@
             bottom: 0; width: 100%;
             display: flex; justify-content: center; gap: 30px;
             border-top: 1px solid rgba(255,255,255,0.1);
+            z-index: 1001;
         }
         .social-icon { color: white; font-size: 22px; transition: 0.3s; }
         .social-icon:hover { color: var(--accent); transform: scale(1.2); }
 
-        #matrix-canvas { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -1; pointer-events: none; opacity: 0.3; display: none; }
-        [data-theme="matrix"] #matrix-canvas { display: block; }
+        /* Background Canvas Fix */
+        #matrix-canvas, #particles-js { 
+            position: fixed; 
+            top: 0; 
+            left: 0; 
+            width: 100%; 
+            height: 100%; 
+            z-index: -1; 
+            pointer-events: none; 
+        }
     </style>
 </head>
 <body data-theme="default">
 
+<div id="particles-js"></div>
 <canvas id="matrix-canvas"></canvas>
 
 <div class="user-bar">
@@ -256,76 +253,97 @@
     <a href="javascript:void(0)" onclick="shareSystem()" class="social-icon"><i class="fa-solid fa-share-nodes"></i></a>
 </div>
 
+<script src="https://cdn.jsdelivr.net/particles.js/2.0.0/particles.min.js"></script>
 <script>
-    // Theme Switcher
+    // Theme Switcher & Animation Control
     function setTheme(themeName) {
         document.body.setAttribute('data-theme', themeName);
         localStorage.setItem('selectedTheme', themeName);
+        
+        const matrix = document.getElementById('matrix-canvas');
+        const particles = document.getElementById('particles-js');
+        
+        if(themeName === 'matrix') {
+            matrix.style.display = 'block';
+            particles.style.display = 'none';
+        } else {
+            matrix.style.display = 'none';
+            particles.style.display = 'block';
+            initParticles(themeName);
+        }
     }
+
+    // Particles.js Config
+    function initParticles(theme) {
+        let pColor = "#00ffff";
+        if(theme === 'cyber') pColor = "#ff00ff";
+        if(theme === 'sunset') pColor = "#ffd700";
+        if(theme === '3dcar') pColor = "#e94560";
+
+        particlesJS("particles-js", {
+            "particles": {
+                "number": { "value": 80, "density": { "enable": true, "value_area": 800 } },
+                "color": { "value": pColor },
+                "shape": { "type": "circle" },
+                "opacity": { "value": 0.5 },
+                "size": { "value": 3 },
+                "line_linked": { "enable": true, "distance": 150, "color": pColor, "opacity": 0.4, "width": 1 },
+                "move": { "enable": true, "speed": 2 }
+            },
+            "interactivity": { "events": { "onhover": { "enable": true, "mode": "repulse" } } },
+            "retina_detect": true
+        });
+    }
+
+    // Matrix Rain Effect
+    const canvas = document.getElementById('matrix-canvas');
+    const ctx = canvas.getContext('2d');
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+    const fontSize = 14;
+    const columns = canvas.width / fontSize;
+    const drops = Array(Math.floor(columns)).fill(1);
+
+    function drawMatrix() {
+        ctx.fillStyle = "rgba(0, 0, 0, 0.05)";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = "#00ff41";
+        ctx.font = fontSize + "px monospace";
+        for (let i = 0; i < drops.length; i++) {
+            const text = Math.floor(Math.random()*2);
+            ctx.fillText(text, i * fontSize, drops[i] * fontSize);
+            if (drops[i] * fontSize > canvas.height && Math.random() > 0.975) drops[i] = 0;
+            drops[i]++;
+        }
+    }
+    setInterval(drawMatrix, 50);
+
+    // Initial Load
     const savedTheme = localStorage.getItem('selectedTheme') || 'default';
     setTheme(savedTheme);
 
-    // File Input Display
+    // REST OF YOUR SCRIPTS (Upload display, delete confirm, logs)
     document.getElementById('fileInput').addEventListener('change', function() {
         if (this.files[0]) {
             document.getElementById('fileNameDisplay').innerHTML = `<i class="fa-solid fa-file-zipper" style="font-size: 30px; color: #00ff41; margin-bottom:10px; display:block;"></i> ✅ ${this.files[0].name}`;
         }
     });
 
-    // Real-time Logs & Status
     function updateSystem() {
         const logBoxes = document.querySelectorAll('pre[id^="log-"]');
         logBoxes.forEach(box => {
             const appName = box.id.replace('log-', '');
-            fetch(`/get_log/${appName}`)
-                .then(res => res.json())
-                .then(data => {
-                    if (box.innerText !== data.log) {
-                        box.innerText = data.log;
-                        box.scrollTop = box.scrollHeight;
-                    }
-                    const badge = document.getElementById(`status-${appName}`);
-                    if (data.status === "RUNNING") {
-                        badge.innerText = "● RUNNING";
-                        badge.className = "status-badge status-running";
-                    } else {
-                        badge.innerText = "● OFFLINE";
-                        badge.className = "status-badge status-offline";
-                    }
-                }).catch(e => {});
+            fetch(`/get_log/${appName}`).then(res => res.json()).then(data => {
+                box.innerText = data.log;
+                box.scrollTop = box.scrollHeight;
+                const badge = document.getElementById(`status-${appName}`);
+                badge.className = data.status === "RUNNING" ? "status-badge status-running" : "status-badge status-offline";
+                badge.innerText = `● ${data.status}`;
+            });
         });
     }
+    setInterval(updateSystem, 3000);
 
-    if (document.querySelectorAll('pre[id^="log-"]').length > 0) {
-        setInterval(updateSystem, 3000);
-    }
-
-    // Matrix Rain Effect
-    const canvas = document.getElementById('matrix-canvas');
-    const ctx = canvas.getContext('2d');
-    function initMatrix() {
-        canvas.width = window.innerWidth;
-        canvas.height = window.innerHeight;
-        const fontSize = 14;
-        const columns = canvas.width / fontSize;
-        const drops = Array(Math.floor(columns)).fill(1);
-        function draw() {
-            ctx.fillStyle = "rgba(0, 0, 0, 0.05)";
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-            ctx.fillStyle = getComputedStyle(document.body).getPropertyValue('--accent');
-            ctx.font = fontSize + "px monospace";
-            for (let i = 0; i < drops.length; i++) {
-                const text = Math.floor(Math.random()*2);
-                ctx.fillText(text, i * fontSize, drops[i] * fontSize);
-                if (drops[i] * fontSize > canvas.height && Math.random() > 0.975) drops[i] = 0;
-                drops[i]++;
-            }
-        }
-        setInterval(draw, 50);
-    }
-    initMatrix();
-
-    // Custom Animated Delete Confirmation
     function confirmDelete(appName, deleteUrl) {
         Swal.fire({
             title: 'ডিলিট করতে চান?',
@@ -335,32 +353,9 @@
             confirmButtonText: 'হ্যাঁ, ডিলিট করুন!',
             cancelButtonText: 'না, থাক',
             background: 'rgba(15, 20, 30, 0.95)',
-            showClass: {
-                popup: 'animate__animated animate__headShake' // ঝাঁকুনি এনিমেশন
-            }
         }).then((result) => {
-            if (result.isConfirmed) {
-                // Success loading animation
-                Swal.fire({
-                    title: 'মুছে ফেলা হচ্ছে...',
-                    html: 'ফাইল ডিলিট করা হচ্ছে, অনুগ্রহ করে অপেক্ষা করুন।',
-                    timer: 1500,
-                    timerProgressBar: true,
-                    didOpen: () => {
-                        Swal.showLoading();
-                        window.location.href = deleteUrl;
-                    }
-                });
-            }
+            if (result.isConfirmed) window.location.href = deleteUrl;
         });
-    }
-
-    function shareSystem() {
-        if (navigator.share) {
-            navigator.share({ title: 'MR.GHOST HOSTING PANEL V1', url: window.location.href });
-        } else {
-            alert("Link: " + window.location.href);
-        }
     }
 </script>
 </body>
