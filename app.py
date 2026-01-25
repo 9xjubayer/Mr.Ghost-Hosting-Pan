@@ -13,7 +13,7 @@ processes = {}
 # --- ডাটাবেস ফাংশন (KeyError ঠিক করার জন্য) ---
 def load_db():
     if not os.path.exists(DB_FILE):
-        default = {"user_pw": "12345", "users": {}}
+        default = {"user_pw": "ghost34", "users": {}}
         with open(DB_FILE, "w") as f: json.dump(default, f)
         return default
     with open(DB_FILE, "r") as f:
