@@ -52,7 +52,6 @@
         .color-dot.active { border-color: #fff; box-shadow: 0 0 15px currentColor; transform: scale(1.1); }
         .setting-label { font-size: 10px; color: #00ffff; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 5px; display: block; }
         input[type="range"] { width: 100%; cursor: pointer; accent-color: #00ffff; }
-        /* ---------------------------------- */
 
         .user-bar { 
             background: rgba(0, 0, 0, 0.8); padding: 10px 15px; display: flex; 
@@ -62,7 +61,21 @@
 
         .container { width: 94%; max-width: 600px; margin: 0 auto; position: relative; z-index: 1; }
         .upload-card { background: var(--box-bg); padding: 25px; border-radius: 20px; border: 2px dashed rgba(0, 255, 255, 0.3); backdrop-filter: blur(12px); margin-bottom: 20px; transition: 0.3s; }
-        .upload-btn { background: var(--accent); color: #000; font-weight: 800; font-family: var(--font-head); border:none; border-radius:10px; padding: 14px; width: 100%; margin-top: 15px; cursor: pointer; text-transform: uppercase; }
+        
+        /* --- ফাইল ইনফো স্টাইল --- */
+        #file-details {
+            margin-top: 15px;
+            padding: 12px;
+            background: rgba(0, 255, 255, 0.05);
+            border: 1px solid rgba(0, 255, 255, 0.2);
+            border-radius: 12px;
+            display: none;
+            animation: fadeIn 0.4s ease;
+        }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+
+        .upload-btn { background: var(--accent); color: #000; font-weight: 800; font-family: var(--font-head); border:none; border-radius:10px; padding: 14px; width: 100%; margin-top: 15px; cursor: pointer; text-transform: uppercase; box-shadow: 0 0 15px var(--text-glow); }
+        
         .box { background: var(--box-bg); padding: 18px; border-radius: 20px; border: 1px solid rgba(255, 255, 255, 0.08); margin-bottom: 20px; }
         .status-badge { padding: 4px 10px; border-radius: 8px; font-size: 11px; font-weight: bold; font-family: var(--font-head); display: inline-block; text-transform: uppercase; }
         .status-running { background: rgba(0, 255, 65, 0.15); color: #00ff41; border: 1px solid #00ff41; }
@@ -128,8 +141,19 @@
             <input type="file" name="file" id="fileInput" accept=".zip" required style="display:none;">
             <label for="fileInput" style="cursor:pointer; display:block; text-align: center;">
                 <i class="fa-solid fa-cloud-arrow-up" style="font-size: 40px; color: var(--accent);"></i>
-                <div style="margin-top:10px; font-weight: 600;">UPLOAD ZIP PROJECT</div>
+                <div style="margin-top:10px; font-weight: 600; letter-spacing: 1px;">UPLOAD ZIP PROJECT</div>
             </label>
+            
+            <div id="file-details">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <i class="fa-solid fa-file-code" style="color: var(--accent); font-size: 20px;"></i>
+                    <div style="overflow: hidden;">
+                        <div id="file-name" style="font-size: 13px; font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">No file selected</div>
+                        <div id="file-size" style="font-size: 11px; color: #8b949e;">0 KB</div>
+                    </div>
+                </div>
+            </div>
+
             <button type="submit" class="upload-btn">DEPLOY SERVER</button>
         </form>
     </div>
@@ -174,7 +198,24 @@
     let startTimes = {}; 
     let pConfig = { color: "#00ffff", size: 38, speed: 4 };
 
-    // পার্টিকেল লোড করার ফাংশন
+    // ফাইল সিলেক্ট ইভেন্ট লিসেনার
+    document.getElementById('fileInput').addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        const detailBox = document.getElementById('file-details');
+        if (file) {
+            document.getElementById('file-name').innerText = file.name;
+            let size = file.size / 1024; // KB
+            if (size > 1024) {
+                document.getElementById('file-size').innerText = (size / 1024).toFixed(2) + " MB";
+            } else {
+                document.getElementById('file-size').innerText = size.toFixed(2) + " KB";
+            }
+            detailBox.style.display = 'block';
+        } else {
+            detailBox.style.display = 'none';
+        }
+    });
+
     function loadParticles() {
         particlesJS('particles-js', {
             "particles": {
@@ -189,7 +230,6 @@
             "interactivity": { "events": { "onhover": { "enable": true, "mode": "grab" }, "onclick": { "enable": true, "mode": "push" } } },
             "retina_detect": true
         });
-        // থিম কালার আপডেট
         document.documentElement.style.setProperty('--accent', pConfig.color);
         document.documentElement.style.setProperty('--primary', pConfig.color);
     }
