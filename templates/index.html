@@ -62,7 +62,6 @@
         .container { width: 94%; max-width: 600px; margin: 0 auto; position: relative; z-index: 1; }
         .upload-card { background: var(--box-bg); padding: 25px; border-radius: 20px; border: 2px dashed rgba(0, 255, 255, 0.3); backdrop-filter: blur(12px); margin-bottom: 20px; transition: 0.3s; }
         
-        /* --- ফাইল ইনফো স্টাইল --- */
         #file-details {
             margin-top: 15px;
             padding: 12px;
@@ -82,13 +81,27 @@
         .status-offline { background: rgba(255, 71, 87, 0.15); color: #ff4757; border: 1px solid #ff4757; }
         .runtime-container { margin: 10px 0 15px 0; padding: 10px; background: rgba(0, 255, 255, 0.05); border-radius: 12px; border: 1px solid rgba(0, 255, 255, 0.1); display: flex; align-items: center; justify-content: space-between; }
         .runtime-clock { font-family: var(--font-head); font-size: 12px; color: var(--accent); text-shadow: 0 0 5px var(--accent); }
+        
+        /* --- বাটন গ্রিড আপডেট --- */
         .button-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
-        .btn-m { padding: 12px; border-radius: 10px; text-decoration: none; text-align: center; font-size: 13px; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 5px; border: none; font-family: var(--font-body); }
+        .btn-m { padding: 12px; border-radius: 10px; text-decoration: none; text-align: center; font-size: 13px; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 5px; border: none; font-family: var(--font-body); cursor: pointer; }
         .run { background: #00d2ff; color: #000; }
         .stop { background: #ff4757; color: #fff; }
         .restart { background: #f39c12; color: #000; }
         .delete { background: #30363d; color: #ff4d4d; border: 1px solid #ff4d4d; }
+        .download { background: rgba(0, 255, 255, 0.1); color: var(--accent); border: 1px solid var(--accent); }
+        .edit { background: #58a6ff; color: #000; } /* এডিট বাটন কালার */
+
         pre { background: #0d1117; color: #00ff41; padding: 12px; height: 130px; overflow-y: auto; border-radius: 12px; border: 1px solid #30363d; font-size: 11px; margin-top: 15px; }
+        
+        /* --- ফাইল ম্যানেজার এবং এডিটর স্টাইল --- */
+        #fmModal { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); z-index:2000; padding:10px; box-sizing: border-box; }
+        .fm-container { background: #161b22; height: 100%; border-radius: 15px; display: flex; flex-direction: column; padding: 15px; border: 1px solid var(--accent); }
+        #fileList { flex: 1; overflow-y: auto; background: #000; border-radius: 8px; padding: 10px; margin-bottom: 10px; border: 1px solid #222; }
+        #editor { flex: 2; border-radius: 8px; font-size: 14px; }
+        .file-item { padding: 10px; border-bottom: 1px solid #222; display: flex; justify-content: space-between; align-items: center; }
+        .save-btn { background: #238636; color: white; padding: 10px; border-radius: 8px; border: none; margin-top: 10px; font-weight: bold; cursor: pointer; }
+
         .branding { text-align: center; padding: 20px 0; }
         .jubayer-text { font-size: 1.6rem; font-weight: 900; font-family: var(--font-head); letter-spacing: 6px; background: linear-gradient(to bottom, #fff, var(--accent)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
         .social-bar { background: transparent; padding: 15px; position: fixed; bottom: 20px; width: 100%; display: flex; justify-content: center; gap: 25px; border: none; z-index: 1001; }
@@ -173,7 +186,9 @@
         <div class="button-grid">
             <a href="/run/{{ app.name }}" class="btn-m run"><i class="fa-solid fa-play"></i> START</a>
             <a href="/stop/{{ app.name }}" class="btn-m stop"><i class="fa-solid fa-stop"></i> STOP</a>
+            <button onclick="openFM('{{ app.name }}')" class="btn-m edit"><i class="fa-solid fa-code"></i> EDIT CODE</button>
             <a href="/restart/{{ app.name }}" class="btn-m restart"><i class="fa-solid fa-rotate"></i> RESTART</a>
+            <a href="/download/{{ app.name }}" class="btn-m download"><i class="fa-solid fa-download"></i> DOWNLOAD ZIP</a>
             <button onclick="confirmDelete('{{ app.name }}', '/delete/{{ app.name }}')" class="btn-m delete"><i class="fa-solid fa-trash"></i> DELETE</button>
         </div>
         <pre id="log-{{ app.name }}">Logs will appear here...</pre>
@@ -186,6 +201,18 @@
     </div>
 </div>
 
+<div id="fmModal">
+    <div class="fm-container">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+            <h4 id="fmTitle" style="margin:0; color:var(--accent); font-family:var(--font-head); font-size:14px;">EDIT PROJECT</h4>
+            <button onclick="closeFM()" style="background:#ff4d4d; border:none; color:white; padding:5px 12px; border-radius:5px; cursor:pointer;">CLOSE</button>
+        </div>
+        <div id="fileList">Loading files...</div>
+        <div id="editor"></div>
+        <button id="saveBtn" class="save-btn" style="display:none;" onclick="saveFile()">SAVE CHANGES</button>
+    </div>
+</div>
+
 <div class="social-bar">
     <a href="https://t.me/mr_ghost34" target="_blank" class="social-icon"><i class="fa-brands fa-telegram"></i></a>
     <a href="https://youtube.com/@mr.ghost-34" target="_blank" class="social-icon"><i class="fa-brands fa-youtube"></i></a>
@@ -194,9 +221,76 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/particles.js/2.0.0/particles.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.4.12/ace.js"></script>
 <script>
     let startTimes = {}; 
     let pConfig = { color: "#00ffff", size: 38, speed: 4 };
+
+    // কোড এডিটর সেটআপ
+    let editor = ace.edit("editor");
+    editor.setTheme("ace/theme/monokai");
+    let activeProj = "";
+    let activeFile = "";
+
+    function openFM(name) {
+        activeProj = name;
+        document.getElementById('fmTitle').innerText = "FILES: " + name;
+        document.getElementById('fmModal').style.display = 'block';
+        refreshFiles();
+    }
+
+    function closeFM() { document.getElementById('fmModal').style.display = 'none'; }
+
+    function refreshFiles() {
+        fetch('/list_files/' + activeProj).then(res => res.json()).then(data => {
+            let html = "";
+            data.files.forEach(f => {
+                html += `<div class="file-item">
+                            <span onclick="loadFile('${f}')" style="cursor:pointer; color:var(--accent); font-size:13px;">📄 ${f}</span>
+                            <i class="fa-solid fa-trash-can" onclick="deleteFile('${f}')" style="color:#ff4d4d; cursor:pointer;"></i>
+                         </div>`;
+            });
+            document.getElementById('fileList').innerHTML = html || "Empty Project";
+        });
+    }
+
+    function loadFile(f) {
+        activeFile = f;
+        fetch('/read_file', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({project: activeProj, filename: f})
+        }).then(res => res.json()).then(data => {
+            editor.setValue(data.content, -1);
+            document.getElementById('saveBtn').style.display = 'block';
+            if(f.endsWith('.js')) editor.session.setMode("ace/mode/javascript");
+            else if(f.endsWith('.py')) editor.session.setMode("ace/mode/python");
+            else editor.session.setMode("ace/mode/text");
+        });
+    }
+
+    function saveFile() {
+        fetch('/save_file', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({project: activeProj, filename: activeFile, content: editor.getValue()})
+        }).then(res => res.json()).then(() => {
+            Swal.fire({ icon: 'success', title: 'Saved!', background: '#0a0a0a', color: '#fff', timer: 1000, showConfirmButton: false });
+        });
+    }
+
+    function deleteFile(f) {
+        Swal.fire({ title: 'মুছে ফেলবেন?', text: `${f} স্থায়ীভাবে ডিলিট হবে!`, icon: 'warning', showCancelButton: true, confirmButtonColor: '#ff4d4d', background: '#0a0a0a', color: '#fff' })
+        .then(res => {
+            if(res.isConfirmed) {
+                fetch('/delete_file', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({project: activeProj, filename: f})
+                }).then(() => refreshFiles());
+            }
+        });
+    }
 
     // ফাইল সিলেক্ট ইভেন্ট লিসেনার
     document.getElementById('fileInput').addEventListener('change', function(e) {
@@ -204,12 +298,8 @@
         const detailBox = document.getElementById('file-details');
         if (file) {
             document.getElementById('file-name').innerText = file.name;
-            let size = file.size / 1024; // KB
-            if (size > 1024) {
-                document.getElementById('file-size').innerText = (size / 1024).toFixed(2) + " MB";
-            } else {
-                document.getElementById('file-size').innerText = size.toFixed(2) + " KB";
-            }
+            let size = file.size / 1024;
+            document.getElementById('file-size').innerText = size > 1024 ? (size / 1024).toFixed(2) + " MB" : size.toFixed(2) + " KB";
             detailBox.style.display = 'block';
         } else {
             detailBox.style.display = 'none';
@@ -231,14 +321,12 @@
             "retina_detect": true
         });
         document.documentElement.style.setProperty('--accent', pConfig.color);
-        document.documentElement.style.setProperty('--primary', pConfig.color);
     }
 
     function toggleMenu() {
         const panel = document.getElementById('sidePanel');
-        const icon = document.getElementById('menuIcon');
         panel.classList.toggle('active');
-        icon.className = panel.classList.contains('active') ? "fa-solid fa-xmark" : "fa-solid fa-sliders";
+        document.getElementById('menuIcon').className = panel.classList.contains('active') ? "fa-solid fa-xmark" : "fa-solid fa-sliders";
     }
 
     function changeHue(newColor, element) {
@@ -255,7 +343,6 @@
         {% for app in apps %}
             fetch('/get_log/{{ app.name }}').then(res => res.json()).then(data => {
                 const badge = document.getElementById('status-{{ app.name }}');
-                const timerEl = document.getElementById('timer-{{ app.name }}');
                 const logBox = document.getElementById('log-{{ app.name }}');
                 if (data.log) logBox.innerText = data.log;
                 if (data.status === "RUNNING") {
@@ -265,7 +352,6 @@
                 } else {
                     badge.innerText = "● OFFLINE";
                     badge.className = "status-badge status-offline";
-                    timerEl.innerText = "00d 00h 00m 00s";
                     delete startTimes['{{ app.name }}'];
                 }
             });
